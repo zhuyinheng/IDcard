@@ -75,7 +75,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
     <IncludePath>C:\opencv\opencv3.1.0\build\include;C:\opencv\opencv3.1.0\build\include\opencv;C:\opencv\opencv3.1.0\build\include\opencv2;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\opencv\opencv3.1.0\build\x64\vc14\lib\;$(LibraryPath)</LibraryPath>
+    <LibraryPath>C:\Users\朱胤恒\Desktop\tesseract-leptonica-vs2015\x64\Debug;C:\opencv\opencv3.1.0\build\x64\vc14\lib\;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -146,6 +146,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="源.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\..\..\..\..\opencv\opencv3.1.0\build\include\opencv2\ml\ml.hpp" />
+    <ClInclude Include="Ann.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

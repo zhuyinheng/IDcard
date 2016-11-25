@@ -25,3 +25,5 @@ void FindArea(const Mat &Input, RotatedRect &rect, Point estimate, int MODE);
 bool IsSuit(const RotatedRect &candidate, int MODE);
 void WatchMat(Mat Input,string s);
 void test(int n);
+void CharSegment_v2(const Mat &inputImg, vector<Mat> &dst_mat);
+void GetNumberTess(Mat Input);

@@ -2,6 +2,7 @@
 #include <string>
 #include <cstdlib>
 #include <vector>
+#include <istream>
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/core.hpp>  
 #include <opencv2/highgui/highgui.hpp>  
@@ -479,6 +480,12 @@ void FindArea(const Mat &Input, RotatedRect &rect,Point estimate,int MODE)
 	}
 	RotatedRect mr = minAreaRect(Mat(contours[maxi]));
 	//mr.size.width = mr.size.width*1.1;
+	RotatedRect mt = mr;
+	mt.size.height += 20;
+	mt.size.width += 20;
+	cout << endl << 33 << "Tess" << endl;
+	Rect x = mt.boundingRect();
+	GetNumberTess(Input(x));
 	rect= mr;
 
 	//测试是否找到了号码区域
@@ -587,8 +594,41 @@ void test(int n)
 		Normalize(imgRplane, rect, outputMat); //获得身份证号码字符矩阵
 		imshow("outputMat", outputMat);
 		vector<int> num = GetNumber(outputMat);
-		cout <<endl<< i<<endl;
+		vector<Mat> char_mat;
+		//CharSegment_v2(outputMat, char_mat);
+
+		cout <<endl<< i<<"ANN"<<endl;
 		for (int i = 0; i <= 17; i++)cout << num[i];
+		
+	}
+}
+
+void CharSegment_v2(const Mat & inputImg, vector<Mat>& dst_mat)
+{
+
+	Mat img_threshold;
+
+	Mat whiteImg(inputImg.size(), inputImg.type(), cv::Scalar(255));
+	Mat in_Inv = whiteImg - inputImg;
+	threshold(in_Inv, img_threshold, 0, 255, CV_THRESH_OTSU); //大津法二值化
+	Mat morl;
+	Mat element = getStructuringElement(MORPH_RECT, Size(3, 15));  //闭形态学的结构元素
+	morphologyEx(img_threshold, morl, CV_MOP_CLOSE, element);
+	WatchMat(morl, "morl");
+
+}
+
+void GetNumberTess(Mat Input)
+{
+	char ans[50];
+	imwrite("number.png", Input);
+	system("Tesseract-OCR\\tesseract number.png number -psm 7 digits");
+	freopen("number.txt", "r", stdin);
+	cin.getline(ans,50);
+	for (int i = 0; i < strlen(ans); i++)
+	{
+		if (ans[i] == ' ') continue;
+		cout << ans[i];
 	}
 }
 
@@ -597,5 +637,6 @@ int main()
 
 	 //GetAnnXML();
 	test(10);
+
 	return 0;
 }

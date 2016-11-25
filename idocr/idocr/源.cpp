@@ -17,7 +17,7 @@ Mat ConverToRGray(const Mat Input)
 {
 	Mat splitBGR[3];
 	split(Input, splitBGR);
-	return splitBGR[1];
+	return splitBGR[2];
 }
 double Distance(Point a, Point b)
 {
@@ -42,9 +42,9 @@ void EstimatePosition(Mat Input, Point &numesti, Point &namesti, Point &minzuest
 	face_cascade.detectMultiScale(Input, faces, 1.1, 2, 0 | CV_HAAR_SCALE_IMAGE, Size(1, 1));
 	Point center(faces[0].x + faces[0].width*0.5, faces[0].y + faces[0].height*0.5);
 
-		cout << "x=" << faces[0].x << "y=" << faces[0].y << endl;
-		cout << "x=" << center.x << "y=" << center.y << endl;
-		cout << "width=" << faces[0].width << "height=" << faces[0].height << endl;
+		//cout << "x=" << faces[0].x << "y=" << faces[0].y << endl;
+		//cout << "x=" << center.x << "y=" << center.y << endl;
+		//cout << "width=" << faces[0].width << "height=" << faces[0].height << endl;
 		ellipse(Input, center, Size(faces[0].width*0.5, faces[0].height*0.5), 0, 0, 360, Scalar(255, 0, 0), 2, 7, 0);
 
 	float x = faces[0].width, y = faces[0].height;
@@ -124,7 +124,7 @@ void Normalize(const Mat &intputImg, RotatedRect &rects_optimal, Mat& output_are
 		swap(rect_size.width, rect_size.height);
 	Mat  img_crop;
 	getRectSubPix(img_rotated, rect_size, rects_optimal.center, img_crop);
-	//WatchMat(img_crop, "img_crop");
+	WatchMat(img_crop, "img_crop");
 	//用光照直方图调整所有裁剪得到的图像，使具有相同宽度和高度，适用于训练和分类
 	Mat resultResized;
 	resultResized.create(20, 300, CV_8UC1);
@@ -141,7 +141,7 @@ void CharSegment(const Mat &inputImg, vector<Mat> &dst_mat)
 	Mat in_Inv = whiteImg - inputImg;
 
 	// threshold(in_Inv ,img_threshold , 140,255 ,CV_THRESH_BINARY ); //反转黑白色
-	threshold(in_Inv, img_threshold, 0, 255, CV_THRESH_OTSU); //大津法二值化
+	threshold(in_Inv, img_threshold, 0, 255, CV_THRESH_OTSU + CV_THRESH_BINARY); //大津法二值化
 	imshow("img_threshold", img_threshold);
 	waitKey(0);
 	int x_char[19] = { 0 };
@@ -183,6 +183,7 @@ void CharSegment(const Mat &inputImg, vector<Mat> &dst_mat)
 	x_char[18] = img_threshold.cols;
 	for (int i = 0; i < 18; i++)
 	{
+		if(x_char[i + 1] - x_char[i]>0)
 		dst_mat.push_back(Mat(in_Inv, Rect(x_char[i], 0, x_char[i + 1] - x_char[i], img_threshold.rows)));
 	}
 
@@ -400,7 +401,7 @@ void FindArea(const Mat &Input, RotatedRect &rect,Point estimate,int MODE)
 	Mat imgInv(Input.size(), Input.type(), cv::Scalar(255));
 	Mat threshold_Inv = imgInv - threshold_R; //黑白色反转，即背景为黑色
 
-	Mat element = getStructuringElement(MORPH_RECT, Size(15, 3));  //闭形态学的结构元素
+	Mat element = getStructuringElement(MORPH_RECT, Size(15, 5));  //闭形态学的结构元素
 	morphologyEx(threshold_Inv, threshold_Inv, CV_MOP_CLOSE, element);
 	imshow("threshold_Inv", threshold_Inv);
 	waitKey(30);
@@ -411,32 +412,47 @@ void FindArea(const Mat &Input, RotatedRect &rect,Point estimate,int MODE)
 	//查看
 	Mat watch_Input;
 	Input.copyTo(watch_Input);
-	for (int i = 0; i < contours.size(); i++)
-	{
-		//使用边界框的方式  
-		Rect aRect = boundingRect(contours[i]);
-		//if (aRect.area() <= 100) continue;
-		int tmparea = aRect.height*aRect.height;
-		//if (((double)aRect.width / (double)aRect.height>5) && tmparea >= 200 && tmparea <= 2500)
-		{
-			rectangle(watch_Input, cvPoint(aRect.x, aRect.y), cvPoint(aRect.x + aRect.width, aRect.y + aRect.height), 1, 2);
-			//cvDrawContours( dst, contours, color, color, -1, 1, 8 );  
-		}
-	}
+	//for (int i = 0; i < contours.size(); i++)
+	//{
+	//	//使用边界框的方式  
+	//	Rect aRect = boundingRect(contours[i]);
+	//	//if (aRect.area() <= 100) continue;
+	//	int tmparea = aRect.height*aRect.height;
+	//	//if (((double)aRect.width / (double)aRect.height>5) && tmparea >= 200 && tmparea <= 2500)
+	//	{
+	//		rectangle(watch_Input, cvPoint(aRect.x, aRect.y), cvPoint(aRect.x + aRect.width, aRect.y + aRect.height), 1, 2);
+	//		//cvDrawContours( dst, contours, color, color, -1, 1, 8 );  
+	//	}
+	//}
 	imshow("watch_Input", watch_Input);
 	waitKey(30);
 	double mindis = 100000;
 	int maxi = 0;
+	bool flag = false;
 	for (int i = 0; i < contours.size(); i++)
 	{
 		RotatedRect mr = minAreaRect(Mat(contours[i]));
+		//mr.size.width = mr.size.width*1.1;
 		if (!IsSuit(mr,MODE))  //判断矩形轮廓是否符合要求
 		{
 			continue;
 		}
 		else
 		{
+			flag = true;
+			Rect aRect = boundingRect(contours[i]);
+			//if (aRect.area() <= 100) continue;
+			int tmparea = aRect.height*aRect.height;
+			//if (((double)aRect.width / (double)aRect.height>5) && tmparea >= 200 && tmparea <= 2500)
+			{
+				rectangle(watch_Input, cvPoint(aRect.x, aRect.y), cvPoint(aRect.x + aRect.width, aRect.y + aRect.height),(100,100,100));
+				//cvDrawContours( dst, contours, color, color, -1, 1, 8 );  
+			}
+
 			Point center =mr.center;
+			circle(Input, center, 10, (255, 255, 255));
+			WatchMat(Input, "Input");
+			waitKey(0);
 			if (mindis > Distance(center, estimate))
 			{
 				maxi = i;
@@ -444,7 +460,27 @@ void FindArea(const Mat &Input, RotatedRect &rect,Point estimate,int MODE)
 			}
 		}
 	}
-	rect= minAreaRect(Mat(contours[maxi]));
+	if (flag == false)
+	{
+		for (int i = 0; i < contours.size(); i++)
+		{
+			RotatedRect mr = minAreaRect(Mat(contours[i]));
+			//mr.size.width = mr.size.width + 10;
+				Point center = mr.center;
+				/*circle(Input, center, 10, (255, 255, 255));
+				WatchMat(Input, "Input");
+				waitKey(0);*/
+				if (mindis > Distance(center, estimate))
+				{
+					maxi = i;
+					mindis = Distance(center, estimate);
+				}
+		}
+	}
+	RotatedRect mr = minAreaRect(Mat(contours[maxi]));
+	//mr.size.width = mr.size.width*1.1;
+	rect= mr;
+
 	//测试是否找到了号码区域
 	//    Mat out;
 	//    in.copyTo(out);
@@ -464,7 +500,7 @@ bool IsSuit(const RotatedRect &candidate,int MODE)
 		float error = 0.2;
 		const float aspect = 4.5 / 0.3; //长宽比
 		int min = 10 * aspect * 10; //最小区域
-		int max = 30 * aspect * 30;  //最大区域
+		int max = 50 * aspect * 50;  //最大区域
 		float rmin = aspect - aspect*error; //考虑误差后的最小长宽比
 		float rmax = aspect + aspect*error; //考虑误差后的最大长宽比
 
@@ -472,7 +508,11 @@ bool IsSuit(const RotatedRect &candidate,int MODE)
 		double r = (double)candidate.size.width / (double)candidate.size.height;
 		if (r < 1)
 			r = 1 / r;
-
+		/*if (area < min)cout << "1";
+		if (area > max)cout << "2";
+		if (r< rmin)cout << "3";
+		if (r > rmax)cout << "4";
+		cout << endl;*/
 		if ((area < min || area > max) || (r< rmin || r > rmax)) //满足该条件才认为该candidate为车牌区域
 			return false;
 		else
@@ -538,13 +578,16 @@ void test(int n)
 		imgRplane.copyTo(testr);
 		Point numesti, namesti, minzuesti;
 		EstimatePosition(source, numesti, namesti, minzuesti);
+		circle(source, numesti, 10, (255, 255, 255));
+		WatchMat(source, "source");
+		waitKey(0);
 		RotatedRect  rect;
 		FindArea(imgRplane, rect, numesti, NUMBER);  //获得身份证号码区域
 		Mat outputMat;
 		Normalize(imgRplane, rect, outputMat); //获得身份证号码字符矩阵
 		imshow("outputMat", outputMat);
 		vector<int> num = GetNumber(outputMat);
-		cout << endl;
+		cout <<endl<< i<<endl;
 		for (int i = 0; i <= 17; i++)cout << num[i];
 	}
 }
@@ -552,7 +595,7 @@ void test(int n)
 int main()
 {
 
-	GetAnnXML();
+	 //GetAnnXML();
 	test(10);
 	return 0;
 }

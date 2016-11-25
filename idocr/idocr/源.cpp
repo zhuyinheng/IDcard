@@ -197,7 +197,7 @@ void GetAnnXML() // 此函数仅需运行一次，目的是获得训练矩阵和标签矩阵，保存于ann_
 	Mat classes = Mat::zeros(1, 550, CV_8UC1);   //1700*48维，也即每个样本有48个特征值
 	char path[60];
 	Mat img_read;
-	for (int i = 0; i<=10; i++)  //第i类
+	for (int i = 0; i<10; i++)  //第i类
 	{
 		for (int j = 1; j<= 50; ++j)  //i类中第j个，即总共有11类字符，每类有50个样本
 		{
@@ -552,7 +552,7 @@ void test(int n)
 int main()
 {
 
-	//GetAnnXML();
+	GetAnnXML();
 	test(10);
 	return 0;
 }

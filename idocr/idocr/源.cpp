@@ -1,4 +1,6 @@
 #include <iostream>
+#include <string>
+#include <cstdlib>
 #include <vector>
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/core.hpp>  
@@ -11,17 +13,17 @@
 using namespace std;
 using namespace cv;
 using namespace ml;
-Mat getR(const Mat Input)
+Mat ConverToRGray(const Mat Input)
 {
 	Mat splitBGR[3];
 	split(Input, splitBGR);
 	return splitBGR[2];
 }
-double distance(Point a, Point b)
+double Distance(Point a, Point b)
 {
 	return sqrt((a.x - b.x)*(a.x - b.x) + (a.y - b.y)*(a.y - b.y));
 }
-void estipos(Mat Input, Point &numesti, Point &namesti, Point &minzuesti)
+void EstimatePosition(Mat Input, Point &numesti, Point &namesti, Point &minzuesti)
 {
 	const string face_cascade_name = "haarcascade_frontalface_alt.xml";
 	String nestedCascadeName = "./haarcascade_eye.xml";
@@ -54,7 +56,7 @@ void estipos(Mat Input, Point &numesti, Point &namesti, Point &minzuesti)
 	ellipse(Input, minzuesti, Size(10, 10), 0, 0, 360, Scalar(255, 0, 0), 2, 7, 0);
 	imshow("身份证号码", Input);
 }
-void OstuBeresenThreshold(const Mat &in, Mat &out) //输入为单通道
+void OstuThreshold(const Mat &in, Mat &out) //输入为单通道
 {
 
 	double ostu_T = threshold(in, out, 0, 255, CV_THRESH_OTSU); //otsu获得全局阈值
@@ -102,7 +104,7 @@ void OstuBeresenThreshold(const Mat &in, Mat &out) //输入为单通道
 	}
 
 }
-void normalPosArea(const Mat &intputImg, RotatedRect &rects_optimal, Mat& output_area)
+void Normalize(const Mat &intputImg, RotatedRect &rects_optimal, Mat& output_area)
 {
 	float r, angle;
 
@@ -126,13 +128,9 @@ void normalPosArea(const Mat &intputImg, RotatedRect &rects_optimal, Mat& output
 	Mat resultResized;
 	resultResized.create(20, 300, CV_8UC1);
 	cv::resize(img_crop, resultResized, resultResized.size(), 0, 0, INTER_CUBIC);
-
 	resultResized.copyTo(output_area);
-
-
-
 }
-void char_segment(const Mat &inputImg, vector<Mat> &dst_mat)
+void CharSegment(const Mat &inputImg, vector<Mat> &dst_mat)
 {
 	imshow(",inpputImg", inputImg);
 	waitKey(0);
@@ -192,21 +190,21 @@ void char_segment(const Mat &inputImg, vector<Mat> &dst_mat)
 	// imwrite("b.jpg" , img_threshold);
 
 }
-void getAnnXML() // 此函数仅需运行一次，目的是获得训练矩阵和标签矩阵，保存于ann_xml.xml中
+void GetAnnXML() // 此函数仅需运行一次，目的是获得训练矩阵和标签矩阵，保存于ann_xml.xml中
 {
 	FileStorage fs("ann_xml.xml", FileStorage::WRITE);
 	Mat  trainData;
 	Mat classes = Mat::zeros(1, 550, CV_8UC1);   //1700*48维，也即每个样本有48个特征值
 	char path[60];
 	Mat img_read;
-	for (int i = 0; i<10; i++)  //第i类
+	for (int i = 0; i<=10; i++)  //第i类
 	{
-		for (int j = 1; j< 51; ++j)  //i类中第j个，即总共有11类字符，每类有50个样本
+		for (int j = 1; j<= 50; ++j)  //i类中第j个，即总共有11类字符，每类有50个样本
 		{
-			sprintf(path, "E:\\PracticeOfQt\\Id_recognition\\Number_char\\%d\\%d (%d).png", i, i, j);
+			sprintf(path, "C:\\Number_char\\%d\\%d (%d).png", i, i, j);
 			img_read = imread(path, 0);
 			Mat dst_feature;
-			calcGradientFeat(img_read, dst_feature); //计算每个样本的特征矢量
+			GradientFeat(img_read, dst_feature); //计算每个样本的特征矢量
 			trainData.push_back(dst_feature);
 
 			classes.at<uchar>(i * 50 + j - 1) = i;
@@ -215,15 +213,13 @@ void getAnnXML() // 此函数仅需运行一次，目的是获得训练矩阵和标签矩阵，保存于ann_
 	fs << "TrainingData" << trainData;
 	fs << "classes" << classes;
 	fs.release();
-
 }
-void calcGradientFeat(const Mat &imgSrc, Mat &out)
+void GradientFeat(const Mat &Input, Mat &Output)
 {
 	vector <float>  feat;
 	Mat image;
 
-	//cvtColor(imgSrc,image,CV_BGR2GRAY);
-	cv::resize(imgSrc, image, Size(8, 16));
+	resize(Input, image, Size(8, 16));
 
 	// 计算x方向和y方向上的滤波
 	float mask[3][3] = { { 1, 2, 1 },{ 0, 0, 0 },{ -1, -2, -1 } };
@@ -238,8 +234,8 @@ void calcGradientFeat(const Mat &imgSrc, Mat &out)
 	sobelX = abs(sobelX);
 	sobelY = abs(sobelY);
 
-	float totleValueX = sumMatValue(sobelX);
-	float totleValueY = sumMatValue(sobelY);
+	float totleValueX = SumMatValue(sobelX);
+	float totleValueY = SumMatValue(sobelY);
 
 	// 将图像划分为4*2共8个格子，计算每个格子里灰度值总和的百分比
 	for (int i = 0; i < image.rows; i = i + 4)
@@ -247,16 +243,16 @@ void calcGradientFeat(const Mat &imgSrc, Mat &out)
 		for (int j = 0; j < image.cols; j = j + 4)
 		{
 			Mat subImageX = sobelX(Rect(j, i, 4, 4));
-			feat.push_back(sumMatValue(subImageX) / totleValueX);
+			feat.push_back(SumMatValue(subImageX) / totleValueX);
 			Mat subImageY = sobelY(Rect(j, i, 4, 4));
-			feat.push_back(sumMatValue(subImageY) / totleValueY);
+			feat.push_back(SumMatValue(subImageY) / totleValueY);
 		}
 	}
 
 	//计算第2个特征
 	Mat imageGray;
 	//cvtColor(imgSrc,imageGray,CV_BGR2GRAY);
-	cv::resize(imgSrc, imageGray, Size(4, 8));
+	cv::resize(Input, imageGray, Size(4, 8));
 	Mat p = imageGray.reshape(1, 1);
 	p.convertTo(p, CV_32FC1);
 	for (int i = 0; i<p.cols; i++)
@@ -265,8 +261,8 @@ void calcGradientFeat(const Mat &imgSrc, Mat &out)
 	}
 
 	//增加水平直方图和垂直直方图
-	Mat vhist = projectHistogram(imgSrc, 1); //水平直方图
-	Mat hhist = projectHistogram(imgSrc, 0);  //垂直直方图
+	Mat vhist = ProjectHistogram(Input, 1); //水平直方图
+	Mat hhist = ProjectHistogram(Input, 0);  //垂直直方图
 	for (int i = 0; i<vhist.cols; i++)
 	{
 		feat.push_back(vhist.at<float>(i));
@@ -277,13 +273,13 @@ void calcGradientFeat(const Mat &imgSrc, Mat &out)
 	}
 
 
-	out = Mat::zeros(1, feat.size(), CV_32F);
+	Output = Mat::zeros(1, feat.size(), CV_32F);
 	for (int i = 0; i<feat.size(); i++)
 	{
-		out.at<float>(i) = feat[i];
+		Output.at<float>(i) = feat[i];
 	}
 }
-float sumMatValue(const Mat &image)
+float SumMatValue(const Mat &image)
 {
 	float sumValue = 0;
 	int r = image.rows;
@@ -303,7 +299,7 @@ float sumMatValue(const Mat &image)
 	}
 	return sumValue;
 }
-Mat projectHistogram(const Mat &img, int t)
+Mat ProjectHistogram(const Mat &img, int t)
 {
 	Mat lowData;
 	cv::resize(img, lowData, Size(8, 16)); //缩放到8*16
@@ -325,7 +321,7 @@ Mat projectHistogram(const Mat &img, int t)
 
 	return mhist;
 }
-void ann_train(Ptr<ANN_MLP> &ann, int numCharacters, int nlayers)
+void Train(Ptr<ANN_MLP> &ann, int numCharacters, int nlayers)
 {
 	Mat trainData, classes;
 	FileStorage fs;
@@ -371,7 +367,7 @@ void classify(Ptr<ANN_MLP> &ann, vector<Mat> &char_Mat, vector<int> &char_result
 		Mat output(1, 10, CV_32FC1); //1*10矩阵
 
 		Mat char_feature;
-		calcGradientFeat(char_Mat[i], char_feature);
+		GradientFeat(char_Mat[i], char_feature);
 		ann->predict(char_feature, output);
 		Point maxLoc;
 		double maxVal;
@@ -381,7 +377,7 @@ void classify(Ptr<ANN_MLP> &ann, vector<Mat> &char_Mat, vector<int> &char_result
 
 	}
 }
-void getParityBit(vector<int> &char_result)
+void LastBit(vector<int> &char_result)
 {
 	int mod = 0;
 	int wights[17] = { 7,9,10,5,8,4 ,2,1,6,3,7,9,10,5,8,4,2 };
@@ -392,14 +388,13 @@ void getParityBit(vector<int> &char_result)
 
 	int value[11] = { 1,0,10,9,8,7,6,5,4,3,2 };
 	char_result[17] = value[mod];
-
 }
-void findarea(const Mat &Input, RotatedRect &rect,Point estimate,int MODE)
+void FindArea(const Mat &Input, RotatedRect &rect,Point estimate,int MODE)
 {
 
 
 	Mat threshold_R;
-	OstuBeresenThreshold(Input, threshold_R); //二值化
+	OstuThreshold(Input, threshold_R); //二值化
 
 
 	Mat imgInv(Input.size(), Input.type(), cv::Scalar(255));
@@ -434,17 +429,17 @@ void findarea(const Mat &Input, RotatedRect &rect,Point estimate,int MODE)
 	for (int i = 0; i < contours.size(); i++)
 	{
 		RotatedRect mr = minAreaRect(Mat(contours[i]));
-		if (!is_SandABcorect(mr,MODE))  //判断矩形轮廓是否符合要求
+		if (!IsSuit(mr,MODE))  //判断矩形轮廓是否符合要求
 		{
 			continue;
 		}
 		else
 		{
 			Point center =mr.center;
-			if (mindis > distance(center, estimate))
+			if (mindis > Distance(center, estimate))
 			{
 				maxi = i;
-				mindis = distance(center, estimate);
+				mindis = Distance(center, estimate);
 			}
 		}
 	}
@@ -461,7 +456,7 @@ void findarea(const Mat &Input, RotatedRect &rect,Point estimate,int MODE)
 
 
 }
-bool is_SandABcorect(const RotatedRect &candidate,int MODE)
+bool IsSuit(const RotatedRect &candidate,int MODE)
 {
 	switch (MODE)
 	{
@@ -495,31 +490,31 @@ bool is_SandABcorect(const RotatedRect &candidate,int MODE)
 	
 }
 
-void watch_mat(Mat Input,string s)
+void WatchMat(Mat Input,string s)
 {
 	imshow(s, Input);
 	waitKey(30);
 }
 
 
-vector<int> get_number(Mat Input)//gray input
+vector<int> GetNumber(Mat Input)//gray input
 {
 	vector<Mat> char_mat;
-	char_segment(Input, char_mat);
+	CharSegment(Input, char_mat);
 	//getAnnXML();
 	Ptr<ANN_MLP> ann;
 	ann = ANN_MLP::create();
-	ann_train(ann, 10, 24); //10为输出层结点,也等于输出的类别，24为隐藏层结点
+	Train(ann, 10, 24); //10为输出层结点,也等于输出的类别，24为隐藏层结点
 
 	vector<int> char_result;
 	classify(ann, char_mat, char_result);
 
-	getParityBit(char_result); //最后一位易出错，直接由前17位计算最后一位
+	LastBit(char_result); //最后一位易出错，直接由前17位计算最后一位
 
 	return char_result;
 }
 
-string get_name(Mat Input)
+string GetName(Mat Input)
 {
 	string ans;
 	imwrite("name.jpg", Input);
@@ -532,35 +527,32 @@ void adjust(Mat Inut, Mat &Output)
 {
 
 }
+void test(int n)
+{
+	string path = "C:\\test\\";
+	for (int i = 1; i <= n; i++)
+	{
+		Mat source = imread(path + to_string(i) + ".jpg");
+		resize(source, source, Size(400, 300));
+		Mat imgRplane = ConverToRGray(source); //获得原始图像R分量
+		Mat testr;
+		imgRplane.copyTo(testr);
+		Point numesti, namesti, minzuesti;
+		EstimatePosition(source, numesti, namesti, minzuesti);
+		RotatedRect  rect;
+		FindArea(imgRplane, rect, numesti, NUMBER);  //获得身份证号码区域
+		Mat outputMat;
+		Normalize(imgRplane, rect, outputMat); //获得身份证号码字符矩阵
+		vector<int> num = GetNumber(outputMat);
+		cout << endl;
+		for (int i = 0; i <= 17; i++)cout << num[i];
+	}
+}
 
 int main()
 {
 
-	Mat source, gray;
-	source = imread("C:\\Users\\朱胤恒\\Desktop\\11.jpg");
-
-	resize(source, source, Size(400, 300));
-	Mat imgRplane = getR(source); //获得原始图像R分量
-	Mat testr;
-	imgRplane.copyTo(testr);
-	Point numesti,namesti,minzuesti ;
-	estipos(source ,numesti, namesti, minzuesti);
-	RotatedRect  rect;
-	findarea(imgRplane, rect,numesti,NUMBER);  //获得身份证号码区域
-	Mat outputMat;
-	normalPosArea(imgRplane, rect, outputMat); //获得身份证号码字符矩阵
-	vector<int> num = get_number(outputMat);
-	cout << endl;
-	for (int i = 0; i <= 17; i++)cout << num[i];
-	/*
-	gray = getR(source);
-	
-	
-	vector<int> num = get_number(findarea(gray,numesti));
-	cout << endl;
-	for (int i = 0; i <= 17; i++)cout << num[i];
-
-*/
-	waitKey(0);
+	//GetAnnXML();
+	test(1);
 	return 0;
 }
